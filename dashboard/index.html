@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>MarketLens engagement</title>
+<style>
+  :root {
+    --page: #f5f6f8; --surface: #ffffff; --line: #e5e7eb; --grid: #eceef1;
+    --text: #1a1d21; --text2: #4d5560; --muted: #7d8590;
+    --s-ret: #2a6fdb; --s-new: #e3872d;               /* series: returning, first visit */
+    --r1: #a9c6f2; --r2: #7eaaec; --r3: #548ee3; --r4: #2a6fdb; --r5: #1f56ad; --r6: #173f80; /* funnel ramp */
+    --good: #2f8a4e; --warn: #b7791f; --bad: #c2453d;
+    --wash: rgba(42,111,219,.08);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --page: #0e1013; --surface: #171a1f; --line: #2a2f36; --grid: #23272d;
+      --text: #e9ecef; --text2: #b3bac3; --muted: #858d97;
+      --s-ret: #5c9cf2; --s-new: #f0a35a;
+      --r1: #1f3c6b; --r2: #24508f; --r3: #2f66b4; --r4: #4a83d4; --r5: #6d9fe6; --r6: #96bcf1;
+      --good: #5cbf7c; --warn: #e0a84a; --bad: #ec7a72;
+      --wash: rgba(92,156,242,.10);
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--text);
+         font: 14px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif; }
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 24px 28px 64px; }
+  header { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  h1 { font-size: 22px; margin: 0; letter-spacing: -.01em; }
+  .sub { color: var(--muted); font-size: 13px; }
+  .filters { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; margin: 18px 0 20px;
+             padding: 10px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+  .filters label.fl { color: var(--text2); font-size: 12px; font-weight: 600; margin-right: 6px; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .seg button { border: 0; background: transparent; color: var(--text2); padding: 6px 11px; font: inherit; font-size: 13px; cursor: pointer; }
+  .seg button + button { border-left: 1px solid var(--line); }
+  .seg button.on { background: var(--text); color: var(--surface); }
+  .chk { display: inline-flex; gap: 6px; align-items: center; color: var(--text2); font-size: 13px; cursor: pointer; }
+  .btn { border: 1px solid var(--line); background: var(--surface); color: var(--text); border-radius: 8px;
+         padding: 6px 12px; font: inherit; font-size: 13px; cursor: pointer; margin-left: auto; }
+  .grid { display: grid; gap: 16px; }
+  .g2 { grid-template-columns: 1fr 1fr; } .g3 { grid-template-columns: 1fr 1fr 1fr; }
+  @media (max-width: 900px) { .g2, .g3 { grid-template-columns: 1fr; } }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; min-width: 0; }
+  .card h2 { font-size: 15px; margin: 0 0 2px; }
+  .card .hint { color: var(--muted); font-size: 12.5px; margin: 0 0 12px; }
+  section { margin-top: 16px; }
+  .sectitle { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin: 28px 0 10px; }
+  .tiles { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
+  @media (max-width: 1000px) { .tiles { grid-template-columns: repeat(3, 1fr); } }
+  .tile { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+  .tile .tl { color: var(--text2); font-size: 12.5px; font-weight: 600; }
+  .tile .tv { font-size: 28px; font-weight: 650; margin-top: 4px; letter-spacing: -.01em; }
+  .tile.hero .tv { font-size: 48px; line-height: 1.05; }
+  .tile .tn { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .insights { margin: 0; padding-left: 18px; }
+  .insights li { margin: 5px 0; color: var(--text); }
+  .insights li b { font-weight: 650; }
+  .legend { display: flex; gap: 16px; font-size: 12.5px; color: var(--text2); margin-bottom: 6px; }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+  svg text { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+  svg .gl { stroke: var(--grid); stroke-width: 1; }
+  svg .bl { stroke: var(--line); stroke-width: 1; }
+  svg .lab { fill: var(--text2); font-weight: 600; }
+  .hb { display: grid; gap: 7px; }
+  .hbr { display: grid; grid-template-columns: 150px 1fr; align-items: center; gap: 10px; cursor: default; border-radius: 6px; }
+  .hbr:hover, .hbr:focus { background: var(--wash); outline: none; }
+  .hbl { color: var(--text2); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hbt { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .hbf { height: 14px; border-radius: 0 4px 4px 0; background: var(--s-ret); flex: none; }
+  .hbv { color: var(--text2); font-size: 12.5px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .tw { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  th { text-align: left; color: var(--muted); font-weight: 600; font-size: 12px; padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th.sort { cursor: pointer; } th.sort:hover { color: var(--text); }
+  td { padding: 7px 8px; border-bottom: 1px solid var(--grid); vertical-align: top; }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+  tr.dim td { color: var(--muted); }
+  .badge { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; white-space: nowrap; color: var(--text2); }
+  .badge::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
+  .tag { font-size: 11px; font-weight: 700; color: var(--s-new); border: 1px solid currentColor; border-radius: 5px; padding: 0 4px; margin-left: 6px; }
+  .who { font-weight: 600; } .who small { display: block; font-weight: 400; color: var(--muted); font-size: 12px; }
+  .empty { color: var(--muted); font-size: 13px; margin: 6px 0; }
+  details summary { cursor: pointer; color: var(--text2); font-size: 12.5px; margin-top: 10px; }
+  #tip { position: fixed; pointer-events: none; z-index: 9; background: var(--text); color: var(--surface);
+         font-size: 12.5px; padding: 7px 9px; border-radius: 7px; max-width: 320px; opacity: 0; transition: opacity .08s; white-space: pre-line; }
+  #status { margin-top: 40px; text-align: center; color: var(--muted); }
+  .err { color: var(--bad); }
+  .pend { color: var(--muted); }
+  #keyform { max-width: 420px; margin: 60px auto; }
+  #keyform input { width: 100%; padding: 10px 12px; font: inherit; border: 1px solid var(--line); border-radius: 8px;
+                   background: var(--surface); color: var(--text); margin: 10px 0; }
+  .link { background: none; border: 0; color: var(--text2); font: inherit; font-size: 13px; text-decoration: underline; cursor: pointer; padding: 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>MarketLens engagement</h1>
+      <div class="sub" id="gen">Loading…</div>
+    </div>
+  </header>
+
+  <div class="filters" role="group" aria-label="Filters">
+    <span><label class="fl">Range</label>
+      <span class="seg" id="f-days">
+        <button data-v="1">Today</button><button data-v="7">7 days</button><button data-v="14">14 days</button>
+        <button data-v="30">30 days</button><button data-v="90">90 days</button>
+      </span></span>
+    <span><label class="fl">People</label>
+      <span class="seg" id="f-seg">
+        <button data-v="all">Everyone</button><button data-v="new">New this period</button><button data-v="existing">Existing</button>
+      </span></span>
+    <label class="chk"><input type="checkbox" id="f-visitors" checked> Show visitors without an account</label>
+    <label class="chk"><input type="checkbox" id="f-team"> Include team</label>
+    <button class="btn" id="refresh">Refresh</button>
+    <button class="link" id="forget" type="button">Forget key</button>
+  </div>
+
+  <form class="card" id="keyform" hidden>
+    <h2>Dashboard key</h2>
+    <p class="hint">Paste the key from ~/.marketlens/dashboard_key on your Mac. This browser remembers it.</p>
+    <input id="key" type="password" autocomplete="off" spellcheck="false" aria-label="Dashboard key">
+    <button class="btn" style="margin:0" type="submit">Open dashboard</button>
+    <p class="err" id="keyerr"></p>
+  </form>
+  <div id="status">Loading…</div>
+  <main id="main" hidden>
+    <div class="tiles" id="tiles"></div>
+
+    <section class="card" style="margin-top:16px">
+      <h2>What stands out</h2>
+      <ul class="insights" id="insights"></ul>
+    </section>
+
+    <div class="sectitle">Activity</div>
+    <div class="card">
+      <h2>People active each day</h2>
+      <p class="hint">Each person counted once a day. "First visit" is the day someone first opened the app.</p>
+      <div class="legend"><span><i style="background:var(--s-new)"></i>First visit</span><span><i style="background:var(--s-ret)"></i>Returning</span></div>
+      <div id="daily"></div>
+      <details><summary>Show as table</summary><div id="daily-table"></div></details>
+    </div>
+
+    <div class="grid g2" style="margin-top:16px">
+      <div class="card">
+        <h2>Sign-up funnel</h2>
+        <p class="hint">Phones that opened the app for the first time in this period, and how far they got.</p>
+        <div id="signup"></div>
+      </div>
+      <div class="card">
+        <h2>Where time goes</h2>
+        <p class="hint">Minutes on each tab, including the screens opened from it.</p>
+        <div id="areas"></div>
+      </div>
+    </div>
+
+    <div class="sectitle">Returning</div>
+    <div class="card">
+      <h2>Do people come back?</h2>
+      <p class="hint">Grouped by the day each person first opened the app. A dash means it's too soon to tell.</p>
+      <div id="retention"></div>
+    </div>
+
+    <div class="sectitle">People</div>
+    <div class="card">
+      <h2>Everyone in this view</h2>
+      <p class="hint">Numbers cover the chosen range. Hover a name to see their sign-up answers. Click a column to sort.</p>
+      <div id="people"></div>
+    </div>
+
+    <div class="sectitle">Features</div>
+    <div class="grid g2">
+      <div class="card"><h2>Today's briefing</h2><p class="hint">People reaching each step (build 32 and later).</p><div id="f-brief"></div></div>
+      <div class="card"><h2>News stories</h2><p class="hint">Stories opened, per person and story.</p><div id="f-news"></div></div>
+      <div class="card"><h2>Pulse videos</h2><p class="hint">Videos shown, per person and video.</p><div id="f-pulse"></div></div>
+      <div class="card"><h2>Explore ideas</h2><p class="hint">Ideas opened, per person and idea, plus first-try checks.</p><div id="f-explore"></div></div>
+      <div class="card"><h2>Walks</h2><p class="hint">Walks started, per person and walk. Stories count when heard to the end (build 38 and later; earlier builds counted a story when it started).</p><div id="f-walks"></div></div>
+      <div class="card"><h2>Companies</h2><p class="hint">Company pages opened, per person and company (build 37 and later for the steps).</p><div id="f-companies"></div></div>
+    </div>
+
+    <div class="sectitle">Content</div>
+    <div class="grid g2">
+      <div class="card"><h2>Lesson reports and suggestions</h2><p class="hint">Open items for review, oldest first: problems reported on lesson pages, better examples and missing ideas. Set a status in the database once handled.</p><div id="content-reports"></div></div>
+      <div class="card"><h2>Story problem reports</h2><p class="hint">Open reports on News stories, oldest first. A decision applies to every open report of that story, and reporters see it under My reports.</p><div id="story-reports"></div></div>
+      <div class="card"><h2>Walk reports</h2><p class="hint">Route checks and problems reported on walks, newest first. Includes team accounts, since owners field-test routes.</p><div id="walk-reports"></div></div>
+      <div class="card"><h2>Top stories</h2><p class="hint">By people who opened them.</p><div id="stories"></div></div>
+      <div class="card"><h2>Top videos</h2><p class="hint">By minutes watched.</p><div id="videos"></div></div>
+      <div class="card"><h2>Pulse channels</h2><p class="hint">Minutes watched per channel.</p><div id="channels"></div></div>
+      <div class="card"><h2>Top ideas</h2><p class="hint">By people who opened them.</p><div id="concepts"></div></div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <h2>Why items were ranked, and how they did</h2>
+      <p class="hint">The reason each item was placed where it was, and how often it was finished (stories) or watched for 30 s or more (videos).</p>
+      <div id="reasons"></div>
+    </div>
+  </main>
+</div>
+<div id="tip" role="tooltip"></div>
+
+<script>
+const state = { days: 7, segment: "all", team: false, visitors: true, sort: "last_seen", dir: -1, data: null };
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const N = v => Number(v || 0);
+const fmt = v => { v = N(v); return Math.abs(v) >= 10000 ? (v/1000).toFixed(1)+"K" : Number.isInteger(v) ? v.toLocaleString() : v.toLocaleString(undefined,{maximumFractionDigits:1}); };
+const pct = (a, b) => !N(b) ? "–" : Math.round(100 * N(a) / N(b)) + "%";
+const day = s => new Date(s + "T12:00:00");
+const dshort = s => day(s).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+const daysBetween = (a, b) => Math.round((day(b) - day(a)) / 864e5);
+const nice = s => String(s || "").replace(/([a-z])([A-Z])/g, "$1 $2").replace(/^./, c => c.toUpperCase());
+const empty = '<p class="empty">No data yet.</p>';
+
+// ---------- filters ----------
+function bindSeg(id, key, cast) {
+  const el = $(id);
+  el.querySelectorAll("button").forEach(b => {
+    b.classList.toggle("on", String(state[key]) === b.dataset.v);
+    b.onclick = () => { state[key] = cast(b.dataset.v); bindSeg(id, key, cast); load(); };
+  });
+}
+bindSeg("f-days", "days", Number);
+bindSeg("f-seg", "segment", String);
+$("f-team").onchange = e => { state.team = e.target.checked; load(); };
+$("f-visitors").onchange = e => { state.visitors = e.target.checked; renderPeople(); };
+$("refresh").onclick = () => load(true);
+
+const API = "https://nhwfzvzllfrnevnflqhb.supabase.co/functions/v1/dashboard";
+const TZ = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+const store = {
+  get() { try { return localStorage.getItem("ml.dashboard.key") || ""; } catch { return ""; } },
+  set(v) { try { v ? localStorage.setItem("ml.dashboard.key", v) : localStorage.removeItem("ml.dashboard.key"); } catch {} },
+};
+let key = store.get();
+const cache = new Map();   // filter combination → { at, data }; Refresh skips it
+
+function askKey(msg) {
+  $("main").hidden = true; $("status").hidden = true; document.querySelector(".filters").hidden = true;
+  $("keyform").hidden = false; $("keyerr").textContent = msg || ""; $("key").focus();
+}
+$("keyform").onsubmit = e => {
+  e.preventDefault();
+  key = $("key").value.trim(); if (!key) return;
+  store.set(key); $("keyform").hidden = true; document.querySelector(".filters").hidden = false; load(true);
+};
+$("forget").onclick = () => { store.set(""); key = ""; cache.clear(); $("key").value = ""; askKey(); };
+
+async function load(fresh) {
+  if (!key) return askKey();
+  const q = `days=${state.days}&segment=${state.segment}&team=${state.team ? 1 : 0}&tz=${encodeURIComponent(TZ)}`;
+  const hit = cache.get(q);
+  if (!fresh && hit && Date.now() - hit.at < 60000) { state.data = hit.data; render(hit.data); return; }
+  $("status").hidden = false; $("status").textContent = "Loading…"; $("status").className = "";
+  try {
+    const r = await fetch(`${API}?${q}`, { headers: { "x-dashboard-key": key }, cache: "no-store" });
+    const d = await r.json().catch(() => ({ error: `HTTP ${r.status}` }));
+    if (r.status === 401) { store.set(""); key = ""; return askKey("That key didn't work."); }
+    if (!r.ok || d.error) throw new Error(d.error || `HTTP ${r.status}`);
+    cache.set(q, { at: Date.now(), data: d });
+    state.data = d; render(d);
+    $("status").hidden = true; $("main").hidden = false;
+  } catch (e) {
+    $("status").textContent = "Couldn't load: " + e.message; $("status").className = "err";
+  }
+}
+
+// ---------- helpers ----------
+function inScope(p, d) {
+  if (state.segment === "new" && p.first_seen < d.start) return false;
+  if (state.segment === "existing" && p.first_seen >= d.start) return false;
+  return true;
+}
+function status(p, today) {
+  const ago = daysBetween(p.last_seen, today);
+  if (!p.account) return ["No account", "var(--muted)", `Opened the app, never signed in. Last seen ${ago === 0 ? "today" : ago + (ago === 1 ? " day" : " days") + " ago"}`];
+  if (ago <= 2) return ["Active", "var(--good)", ago === 0 ? "Seen today" : ago === 1 ? "Seen yesterday" : "Seen 2 days ago"];
+  if (ago <= 6) return ["Slipping", "var(--warn)", `Last seen ${ago} days ago`];
+  return ["Inactive", "var(--bad)", `Last seen ${ago} days ago`];
+}
+function tile(label, value, note, hero) {
+  return `<div class="tile${hero ? " hero" : ""}"><div class="tl">${esc(label)}</div><div class="tv">${value}</div><div class="tn">${esc(note || "")}</div></div>`;
+}
+function hbars(rows, { label, value, unit = "", tip, color, max }) {
+  rows = rows.filter(r => N(r[value]) > 0);
+  if (!rows.length) return empty;
+  const top = max || Math.max(...rows.map(r => N(r[value])));
+  return '<div class="hb">' + rows.map(r => {
+    const v = N(r[value]);
+    const t = tip ? tip(r) : `${r[label]}: ${fmt(v)} ${unit}`;
+    return `<div class="hbr" tabindex="0" data-tip="${esc(t)}"><span class="hbl">${esc(r[label])}</span><span class="hbt">` +
+      `<span class="hbf" style="width:${Math.max(1.5, 70 * v / top).toFixed(1)}%;${color ? "background:" + color : ""}"></span>` +
+      `<span class="hbv">${fmt(v)}${unit ? " " + unit : ""}</span></span></div>`;
+  }).join("") + "</div>";
+}
+function funnel(steps, note) {
+  const first = N(steps[0][1]);
+  if (!first) return empty;
+  const ramp = ["--r6", "--r5", "--r4", "--r3", "--r2", "--r1", "--r1"];
+  return '<div class="hb">' + steps.map(([label, v, extra], i) => {
+    v = N(v);
+    const share = pct(v, first);
+    return `<div class="hbr" tabindex="0" data-tip="${esc(`${label}: ${fmt(v)} (${share} of the first step)${extra ? "\n" + extra : ""}`)}">` +
+      `<span class="hbl">${esc(label)}</span><span class="hbt">` +
+      `<span class="hbf" style="width:${v ? Math.max(1.5, 66 * v / first).toFixed(1) : 0}%;background:var(${ramp[i]})"></span>` +
+      `<span class="hbv">${fmt(v)} · ${share}</span></span></div>`;
+  }).join("") + "</div>" + (note ? `<p class="hint" style="margin:10px 0 0">${note}</p>` : "");
+}
+function table(cols, rows) {
+  if (!rows.length) return empty;
+  return '<div class="tw"><table><thead><tr>' + cols.map(c => `<th class="${c.n ? "n" : ""}">${esc(c.h)}</th>`).join("") +
+    "</tr></thead><tbody>" + rows.map(r => "<tr>" + cols.map(c => `<td class="${c.n ? "n" : ""}">${c.f(r)}</td>`).join("") + "</tr>").join("") +
+    "</tbody></table></div>";
+}
+
+// ---------- daily stacked columns ----------
+function dailyChart(rows) {
+  const W = 1180, H = 230, L = 34, R = 10, T = 18, B = 26;
+  const totals = rows.map(r => N(r.first_visit) + N(r.returning));
+  let top = Math.max(1, ...totals);
+  const step = top <= 5 ? 1 : top <= 10 ? 2 : top <= 25 ? 5 : top <= 50 ? 10 : top <= 100 ? 20 : 50;
+  top = Math.ceil(top / step) * step;
+  const n = rows.length, band = (W - L - R) / n, bw = Math.min(24, band * 0.62);
+  const y = v => T + (H - T - B) * (1 - v / top);
+  let s = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="People active each day, first visit and returning">`;
+  for (let t = 0; t <= top; t += step)
+    s += `<line class="gl" x1="${L}" x2="${W - R}" y1="${y(t)}" y2="${y(t)}"/><text x="${L - 6}" y="${y(t) + 4}" text-anchor="end">${t}</text>`;
+  s += `<line class="bl" x1="${L}" x2="${W - R}" y1="${y(0)}" y2="${y(0)}"/>`;
+  const maxI = totals.indexOf(Math.max(...totals));
+  const every = Math.ceil(n / 12);
+  rows.forEach((r, i) => {
+    const x = L + band * i + (band - bw) / 2, nv = N(r.first_visit), rv = N(r.returning);
+    const segs = [[rv, "var(--s-ret)"], [nv, "var(--s-new)"]].filter(z => z[0] > 0);
+    let base = 0;
+    segs.forEach(([v, c], k) => {
+      const y0 = y(base), y1 = y(base + v) + (k > 0 ? 2 : 0);   // 2px surface gap between segments
+      const h = Math.max(0, y0 - y1), last = k === segs.length - 1, rr = last ? Math.min(4, h, bw / 2) : 0;
+      s += `<path d="M${x},${y0} V${y1 + rr} Q${x},${y1} ${x + rr},${y1} H${x + bw - rr} Q${x + bw},${y1} ${x + bw},${y1 + rr} V${y0} Z" fill="${c}"/>`;
+      base += v;
+    });
+    const tip = `${day(r.day).toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric"})}\n${totals[i]} active · ${nv} first visit · ${rv} returning\n${fmt(r.sessions)} sessions · ${fmt(r.minutes)} min`;
+    s += `<rect x="${L + band * i}" y="${T}" width="${band}" height="${H - T - B}" fill="transparent" data-tip="${esc(tip)}" tabindex="0"/>`;
+    if ((i === maxI || i === n - 1) && totals[i] > 0) s += `<text class="lab" x="${x + bw / 2}" y="${y(totals[i]) - 6}" text-anchor="middle">${totals[i]}</text>`;
+    if (i % every === 0 || i === n - 1) s += `<text x="${x + bw / 2}" y="${H - 8}" text-anchor="middle">${dshort(r.day)}</text>`;
+  });
+  return s + "</svg>";
+}
+
+// ---------- render ----------
+function render(d) {
+  const m = d.meta;
+  const gen = new Date(m.generated).toLocaleString(undefined, { hour: "numeric", minute: "2-digit", weekday: "short", month: "short", day: "numeric" });
+  $("gen").textContent = `Updated ${gen} · ${dshort(d.start)} – ${dshort(d.today)} · times in ${m.tz}` +
+    (m.team_hidden ? ` · ${m.team_hidden} team account${m.team_hidden > 1 ? "s" : ""} hidden` : "") + " · simulator runs excluded";
+
+  const all = d.people.filter(p => inScope(p, d));
+  const active = all.filter(p => N(p.days_r) > 0);
+  const fresh = active.filter(p => p.first_seen >= d.start);
+  const existingAll = d.people.filter(p => p.first_seen < d.start && inScope(p, d));
+  const back = existingAll.filter(p => N(p.days_r) > 0);
+  const accountsNew = d.people.filter(p => p.account && p.joined && p.joined >= d.start && inScope(p, d));
+  const sessions = d.daily.reduce((a, r) => a + N(r.sessions), 0);
+  const minutes = d.daily.reduce((a, r) => a + N(r.minutes), 0);
+  const withAcct = active.filter(p => p.account);
+
+  $("tiles").innerHTML =
+    tile("Active people", fmt(active.length), `${withAcct.length} with an account`, true) +
+    tile("New this period", fmt(fresh.length), "First opened the app in range") +
+    tile("Existing who came back", existingAll.length ? `${back.length} of ${existingAll.length}` : "–", existingAll.length ? pct(back.length, existingAll.length) + " of earlier people" : "No one from before this range") +
+    tile("Accounts created", fmt(accountsNew.length), "In range") +
+    tile("Minutes per active person", active.length ? fmt(Math.round(10 * minutes / active.length) / 10) : "–", `${fmt(minutes)} min in total`) +
+    tile("Sessions per active person", active.length ? fmt(Math.round(10 * sessions / active.length) / 10) : "–", `${fmt(sessions)} sessions`);
+
+  $("daily").innerHTML = dailyChart(d.daily);
+  $("daily-table").innerHTML = table([
+    { h: "Day", f: r => dshort(r.day) }, { h: "Active", n: 1, f: r => fmt(r.active) },
+    { h: "First visit", n: 1, f: r => fmt(r.first_visit) }, { h: "Returning", n: 1, f: r => fmt(r.returning) },
+    { h: "Sessions", n: 1, f: r => fmt(r.sessions) }, { h: "Minutes", n: 1, f: r => fmt(r.minutes) }], d.daily);
+
+  const s = d.signup;
+  $("signup").innerHTML = funnel([
+    ["Opened the app", s.opened], ["Chose sign up or sign in", s.chose], ["Has an account", s.account],
+    ["Started questions", s.q1], ["Answered all six", s.q6], ["Finished onboarding", s.complete],
+    ["Opened a story", s.first_story]]);
+
+  const areas = [...d.areas].filter(a => a.area !== "Other").sort((a, b) => N(b.minutes) - N(a.minutes));
+  $("areas").innerHTML = hbars(areas, { label: "area", value: "minutes", unit: "min",
+    tip: r => `${r.area}: ${fmt(r.minutes)} min\n${r.people} people · ${fmt(r.visits)} visits` });
+
+  renderRetention(d);
+  renderPeople();
+
+  const f = d.features;
+  $("f-brief").innerHTML = N(f.brief_1) ? funnel([["Story 1 of 3", f.brief_1], ["Story 2 of 3", f.brief_2], ["Story 3 of 3", f.brief_3],
+    ["The idea page", f.brief_idea], ['"You\'re caught up"', f.brief_done]]) :
+    '<p class="empty">No one has opened the briefing yet. It arrives with build 32.</p>';
+  $("f-news").innerHTML = funnel([["Opened", f.stories_opened], ["Past the first slide", f.stories_past_first],
+    ["Finished", f.stories_finished], ["Went deeper", f.stories_deeper]], `${f.news_people} people read News.`);
+  $("f-pulse").innerHTML = funnel([["Shown", f.videos_shown], ["Watched 10 s or more", f.videos_10s],
+    ["Watched to the end", f.videos_finished], ["Rated", f.videos_rated], ["Opened its idea", f.videos_idea]],
+    `${f.pulse_people} people used Pulse. Saved: ${f.pu_saved} · replays: ${f.pu_replays} · thumbs-down reasons: ${f.pu_reasons} · problems reported: ${f.pu_problems} · turned captions on: ${f.pu_captions}.` +
+    (d.pull ? ` Last video pull ${new Date(d.pull.ran_at).toLocaleString()}: ${d.pull.ok ? "worked" : "failed"}, ${d.pull.kept} new kept` +
+      (d.pull.errors && d.pull.errors.length ? `, problems: ${esc(d.pull.errors.join("; "))}` : "") + "." : ""));
+  $("f-explore").innerHTML = funnel([["Opened", f.ideas_opened], ["Went past the first level", f.ideas_deeper]],
+    `${f.explore_people} people used Explore. Checks right on the first try: ${f.checks_right} of ${f.checks}` +
+    `${N(f.checks) ? " (" + pct(f.checks_right, f.checks) + ")" : ""}. "For you" suggestions opened: ${f.recs_opened}.`);
+
+  $("f-walks").innerHTML = funnel([["Started walking", f.wk_walking], ["Started listening anywhere", f.wk_listening],
+    ["Reached the end", f.wk_finished]], `${f.wk_people} people started a walk. Stories heard: ${f.wk_stories}.`);
+  $("f-companies").innerHTML = funnel([["Opened a company", f.co_opened], ["Looked at how a number was worked out", f.co_metric],
+    ["Tested the claim", f.co_claim], ["Saved it", f.co_saved]],
+    `${f.co_people} people opened a company. Claims judged right: ${f.co_claim_right} of ${f.co_claims}. ` +
+    `Searches: ${f.co_searches}, of which ${f.co_search_miss} found nothing.`);
+
+  const kinds = { number: "A number looks wrong", sentence: "A sentence is wrong", check: "Check answer looks wrong",
+                  confusing: "Confusing", example: "Better example", missing: "Missing idea" };
+  $("content-reports").innerHTML = (d.contentReports || []).length ? table([
+    { h: "When", f: r => esc(r.at) },
+    { h: "Kind", f: r => esc(kinds[r.kind] || r.kind) },
+    { h: "Where", f: r => r.kind === "missing" ? "Explore search" : `${esc(r.title)}<small style="display:block;color:var(--muted)">${esc(r.page)}</small>` },
+    { h: "Detail", f: r => esc(r.detail || "") },
+    { h: "Decide", f: r => `<button class="rs" data-id="${esc(r.id)}" data-s="fixed">Corrected</button> <button class="rs" data-id="${esc(r.id)}" data-s="no_change">No change</button>` },
+  ], d.contentReports) : '<p class="empty">Nothing open.</p>';
+  $("story-reports").innerHTML = (d.storyReports || []).length ? table([
+    { h: "When", f: r => esc(r.at) },
+    { h: "Story", f: r => `${esc(r.title)}<small style="display:block;color:var(--muted)">${esc(r.reports)} open report(s)</small>` },
+    { h: "Reason", f: r => esc(r.detail || "") },
+    { h: "Decide", f: r => `<button class="rs" data-type="story" data-id="${esc(r.id)}" data-s="fixed">Corrected</button> <button class="rs" data-type="story" data-id="${esc(r.id)}" data-s="no_change">No change</button>` },
+  ], d.storyReports) : '<p class="empty">Nothing open.</p>';
+  document.querySelectorAll("#content-reports .rs, #story-reports .rs").forEach(btn => btn.addEventListener("click", async () => {
+    const note = prompt(btn.dataset.s === "fixed" ? "What was corrected? (shown to the learner, optional)" : "Why no change? (shown to the learner, optional)");
+    if (note === null) return;
+    btn.disabled = true;
+    const res = await fetch(API, { method: "POST", headers: { "x-dashboard-key": key, "content-type": "application/json" },
+      body: JSON.stringify({ id: btn.dataset.id, type: btn.dataset.type || "lesson", status: btn.dataset.s, note: note.trim() || null }) });
+    btn.closest("tr").style.opacity = res.ok ? 0.35 : 1;
+    if (!res.ok) { btn.disabled = false; alert("Couldn't save. " + (await res.text())); }
+  }));
+  $("walk-reports").innerHTML = (d.walkReports || []).length ? table([
+    { h: "When", f: r => esc(r.at) },
+    { h: "Walk", f: r => esc(r.walk_id || "") },
+    { h: "Report", f: r => r.kind === "walk_problem"
+        ? `${esc(r.stop_id || "")}: ${esc(r.problem || "")}` + (r.distance_m ? ` (${esc(r.distance_m)} m away, ±${esc(r.accuracy_m || "?")} m)` : "")
+        : `Route check: ${esc(r.auto)} of ${esc(r.stops)} started by themselves<small style="display:block;color:var(--muted)">${esc((r.log || "").split(";").join(" · "))}</small>` },
+  ], d.walkReports) : '<p class="empty">No walk reports yet.</p>';
+  $("stories").innerHTML = table([
+    { h: "Story", f: r => `${esc(r.title)}<small style="display:block;color:var(--muted)">${esc(r.category || "")}</small>` },
+    { h: "People", n: 1, f: r => fmt(r.people) }, { h: "Finished", n: 1, f: r => fmt(r.finished) },
+    { h: "Avg time", n: 1, f: r => N(r.people) ? Math.round(N(r.seconds) / N(r.people)) + " s" : "–" }], d.stories);
+  $("videos").innerHTML = table([
+    { h: "Video", f: r => `${esc(r.title || r.id)}<small style="display:block;color:var(--muted)">${esc(r.channel || "")}${r.duration ? " · " + Math.round(r.duration / 60 * 10) / 10 + " min long" : ""}</small>` },
+    { h: "People", n: 1, f: r => fmt(r.people) }, { h: "Minutes", n: 1, f: r => fmt(r.minutes) },
+    { h: "To the end", n: 1, f: r => fmt(r.finished) }, { h: "👍 / 👎", n: 1, f: r => `${r.likes} / ${r.dislikes}` }], d.videos);
+  $("channels").innerHTML = hbars(d.channels, { label: "channel", value: "minutes", unit: "min",
+    tip: r => `${r.channel}: ${fmt(r.minutes)} min watched\n${r.shown} videos shown` });
+  $("concepts").innerHTML = table([
+    { h: "Idea", f: r => `${esc(r.title)}<small style="display:block;color:var(--muted)">${esc(nice(r.pillar))}</small>` },
+    { h: "People", n: 1, f: r => fmt(r.people) }, { h: "Minutes", n: 1, f: r => fmt(r.minutes) },
+    { h: "Checks right", n: 1, f: r => N(r.checks) ? `${r.right} of ${r.checks}` : "–" }], d.concepts);
+  const reasonName = { pillar: "Matches a sign-up interest", interest: "Matches a sign-up interest", importance: "Most important",
+    fresh: "New today", liked_similar: "Like ones they liked", disliked_similar: "Like ones they disliked", pinned: "Pinned",
+    watched: "Already watched", finished: "Already finished", older: "Older story" };
+  $("reasons").innerHTML = table([
+    { h: "Surface", f: r => esc(r.surface) }, { h: "Reason", f: r => esc(reasonName[r.reason] || r.reason) },
+    { h: "Shown", n: 1, f: r => fmt(r.shown) }, { h: "Finished or watched", n: 1, f: r => fmt(r.engaged) },
+    { h: "Rate", n: 1, f: r => pct(r.engaged, r.shown) }], d.reasons);
+
+  $("insights").innerHTML = insights(d, { all, active, fresh, existingAll, back }).map(t => `<li>${t}</li>`).join("") || "<li>Not enough data yet.</li>";
+}
+
+function renderRetention(d) {
+  const rows = d.retention.filter(r => r.cohort >= d.start || state.days >= 14);
+  const cell = (r, k, after) => daysBetween(r.cohort, d.today) <= after ? '<span class="pend">–</span>' : `${r[k]} <span class="pend">(${pct(r[k], r.people)})</span>`;
+  $("retention").innerHTML = table([
+    { h: "First opened", f: r => dshort(r.cohort) }, { h: "People", n: 1, f: r => fmt(r.people) },
+    { h: "Back next day", n: 1, f: r => cell(r, "d1", 1) },
+    { h: "Back within a week", n: 1, f: r => cell(r, "w1", 7) },
+    { h: "Back in week two", n: 1, f: r => cell(r, "w2", 14) }], rows);
+}
+
+const steps = { 1: "Saw welcome", 2: "Chose sign up / sign in", 3: "Made an account", 4: "Name", 5: "Who are you", 6: "Experience",
+  7: "Goals", 8: "Interests", 9: "Heard from", 10: "Finished sign-up" };
+
+function renderPeople() {
+  const d = state.data; if (!d) return;
+  let rows = d.people.filter(p => inScope(p, d) && (state.visitors || p.account));
+  const k = state.sort, dir = state.dir;
+  rows.sort((a, b) => { const x = a[k], y = b[k]; const c = (isNaN(x) || isNaN(y)) ? String(x ?? "").localeCompare(String(y ?? "")) : N(x) - N(y); return c * dir; });
+  const latest = Math.max(...d.people.map(p => N(p.build)));
+  const cols = [
+    { k: "name", h: "Person", f: p => {
+        const answers = p.account ? [["Who", p.persona], ["Experience", p.experience], ["Goals", (p.goals || []).join?.(", ") ?? p.goals],
+          ["Interests", (p.interests || []).join?.(", ") ?? p.interests], ["Heard from", p.heard_from], ["Signed in with", p.provider]]
+          .filter(a => a[1]).map(a => `${a[0]}: ${a[1]}`).join("\n") : `No account. Got as far as: ${steps[p.furthest_step] || "opening the app"}`;
+        return `<span class="who" data-tip="${esc(answers || "No sign-up answers")}">${esc(p.name)}${p.first_seen >= d.start ? '<span class="tag">NEW</span>' : ""}` +
+          `<small>${p.account ? (p.joined ? "Account since " + dshort(p.joined) : "") : "No account · " + esc(steps[p.furthest_step] || "opened the app")}</small></span>`; } },
+    { k: "last_seen", h: "Status", f: p => { const [l, c, t] = status(p, d.today); return `<span class="badge" style="--c:${c}" data-tip="${t}">${l}</span>`; } },
+    { k: "first_seen", h: "First seen", f: p => dshort(p.first_seen) },
+    { k: "last_seen", h: "Last seen", f: p => dshort(p.last_seen) },
+    { k: "days_r", h: "Days active", n: 1, f: p => `${fmt(p.days_r)}<span class="pend"> / ${fmt(p.days_all)} ever</span>` },
+    { k: "minutes_r", h: "Minutes", n: 1, f: p => fmt(p.minutes_r) },
+    { k: "stories_r", h: "Stories", n: 1, f: p => N(p.stories_r) ? `${fmt(p.finished_r)} of ${fmt(p.stories_r)}` : "–", tip: "finished of opened" },
+    { k: "videos_r", h: "Videos", n: 1, f: p => N(p.videos_r) ? `${fmt(p.videos_r)} · ${fmt(p.video_min_r)} min` : "–" },
+    { k: "ideas_r", h: "Ideas", n: 1, f: p => N(p.ideas_r) ? fmt(p.ideas_r) : "–" },
+    { k: "checks_r", h: "Checks right", n: 1, f: p => N(p.checks_r) ? `${p.checks_right_r} of ${p.checks_r}` : "–" },
+    { k: "briefings_r", h: "Briefings done", n: 1, f: p => N(p.briefings_r) ? fmt(p.briefings_r) : "–" },
+    { k: "build", h: "Build", n: 1, f: p => N(p.build) < latest && p.account ? `<span data-tip="Not on the newest build (${latest})" style="color:var(--warn)">${p.build} ↓</span>` : esc(p.build) },
+  ];
+  if (!rows.length) { $("people").innerHTML = empty; return; }
+  $("people").innerHTML = '<div class="tw"><table><thead><tr>' + cols.map((c, i) =>
+      `<th class="sort ${c.n ? "n" : ""}" data-i="${i}">${esc(c.h)}${state.sort === c.k && state.sortI === i ? (dir > 0 ? " ↑" : " ↓") : ""}</th>`).join("") +
+    "</tr></thead><tbody>" + rows.map(p => `<tr class="${N(p.days_r) ? "" : "dim"}">` + cols.map(c => `<td class="${c.n ? "n" : ""}">${c.f(p)}</td>`).join("") + "</tr>").join("") +
+    "</tbody></table></div>";
+  $("people").querySelectorAll("th.sort").forEach(th => th.onclick = () => {
+    const c = cols[th.dataset.i];
+    state.dir = state.sort === c.k && state.sortI === +th.dataset.i ? -state.dir : -1;
+    state.sort = c.k; state.sortI = +th.dataset.i; renderPeople();
+  });
+}
+
+function insights(d, { all, active, fresh, existingAll, back }) {
+  const out = [];
+  const s = d.signup, f = d.features;
+  if (N(s.opened)) out.push(`<b>${s.account} of ${s.opened}</b> phones that opened the app for the first time ended up with an account (${pct(s.account, s.opened)}). ` +
+    (N(s.opened) - N(s.chose) > 0 ? `${N(s.opened) - N(s.chose)} left at the welcome screen without choosing sign up or sign in.` : ""));
+  if (existingAll.length) out.push(`<b>${back.length} of ${existingAll.length}</b> people from before this range came back during it.`);
+  const accts = all.filter(p => p.account);
+  const quiet = accts.filter(p => daysBetween(p.last_seen, d.today) >= 3);
+  if (quiet.length) out.push(`Not seen for 3+ days: ${quiet.map(p => `<b>${esc(p.name)}</b> (${daysBetween(p.last_seen, d.today)} days)`).join(", ")}.`);
+  const latest = Math.max(...d.people.map(p => N(p.build)));
+  const old = accts.filter(p => N(p.build) < latest);
+  if (old.length) out.push(`On an older build than ${latest}: ${old.map(p => `<b>${esc(p.name)}</b> (${p.build})`).join(", ")}.`);
+  const areas = d.areas.filter(a => a.area !== "Other").sort((a, b) => N(b.minutes) - N(a.minutes));
+  if (areas.length) out.push(`Most time goes to <b>${areas[0].area}</b> (${fmt(areas[0].minutes)} min), the least to ${areas[areas.length - 1].area} (${fmt(areas[areas.length - 1].minutes)} min).`);
+  if (N(f.stories_opened)) out.push(`Stories: <b>${pct(f.stories_finished, f.stories_opened)}</b> of opened stories were finished, and ${pct(f.stories_past_first, f.stories_opened)} got past the first slide.`);
+  if (N(f.videos_shown)) out.push(`Pulse: <b>${pct(f.videos_10s, f.videos_shown)}</b> of videos shown were watched for 10 s or more; ${f.videos_finished} were watched to the end.`);
+  if (N(f.brief_1)) out.push(`Briefing: <b>${f.brief_done} of ${f.brief_1}</b> people who started it reached "You're caught up".`);
+  return out;
+}
+
+// ---------- tooltip ----------
+const tip = $("tip");
+function showTip(el, x, y) {
+  tip.textContent = el.dataset.tip; tip.style.opacity = 1;
+  const r = tip.getBoundingClientRect();
+  tip.style.left = Math.min(window.innerWidth - r.width - 8, x + 14) + "px";
+  tip.style.top = (y + 14 + r.height > window.innerHeight ? y - r.height - 10 : y + 14) + "px";
+}
+document.addEventListener("mousemove", e => { const el = e.target.closest("[data-tip]"); el ? showTip(el, e.clientX, e.clientY) : tip.style.opacity = 0; });
+document.addEventListener("focusin", e => { const el = e.target.closest("[data-tip]"); if (el) { const r = el.getBoundingClientRect(); showTip(el, r.left, r.bottom); } });
+document.addEventListener("focusout", () => tip.style.opacity = 0);
+
+load();
+</script>
+</body>
+</html>
