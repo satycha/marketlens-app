@@ -1,0 +1,32 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow">
+<title>MarketLens · Beta clicks</title>
+<style>body{font:15px/1.5 system-ui,sans-serif;max-width:760px;margin:45px auto;padding:0 20px;color:#252137;background:#f7f5f2}
+input,button{font:inherit;padding:10px;border:1px solid #bcb4c2;border-radius:8px}
+input{min-width:270px}button{cursor:pointer;background:#271b38;color:white}
+table{border-collapse:collapse;width:100%;margin-top:24px}td,th{text-align:left;padding:12px;border-bottom:1px solid #d9d4dd}
+#error{color:#ad2727}small{color:#615a68}</style></head><body>
+<h1>MarketLens beta click tracking</h1>
+<p>Counts actual TestFlight button clicks, not email opens or automatic link previews.</p>
+<form id="form"><label for="key">Dashboard key</label><p><input id="key" type="password" autocomplete="off" placeholder="Dashboard key" required> <button>Load report</button></p></form>
+<p id="error" role="alert"></p><div id="report"></div>
+<script>
+const API="https://nhwfzvzllfrnevnflqhb.supabase.co/functions/v1/beta-click";
+document.getElementById("key").value=sessionStorage.getItem("ml.beta.key")||"";
+document.getElementById("form").onsubmit=async e=>{
+ e.preventDefault();const key=document.getElementById("key").value;
+ const error=document.getElementById("error"),report=document.getElementById("report");
+ report.replaceChildren();error.textContent="";
+ try{
+  const r=await fetch(API+"?days=30",{headers:{"x-dashboard-key":key}});
+  if(!r.ok)throw Error(r.status===401?"Incorrect dashboard key":"Tracking API not deployed or unavailable");
+  const d=await r.json();sessionStorage.setItem("ml.beta.key",key);
+  const title=document.createElement("h2");title.textContent=d.total_clicks+" clicks · "+d.unique_browsers+" browsers (30 days)";
+  const table=document.createElement("table");
+  const header=document.createElement("tr");
+  for(const s of ["Campaign","TestFlight clicks","Unique browsers"]){const th=document.createElement("th");th.textContent=s;header.append(th)}
+  table.append(header);
+  for(const [name,v] of Object.entries(d.campaigns)){const tr=document.createElement("tr");for(const s of [name,v.clicks,v.unique_browsers]){const td=document.createElement("td");td.textContent=String(s);tr.append(td)}table.append(tr)}
+  report.append(title,table);
+ }catch(err){error.textContent=err.message}
+};
+</script></body></html>

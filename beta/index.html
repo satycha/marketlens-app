@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer">
+<title>MarketLens · Join the iPhone beta</title>
+<style>
+:root{color-scheme:light dark;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+body{margin:0;min-height:100dvh;display:grid;place-items:center;background:#f5f2ee;color:#20192b}
+main{width:min(460px,calc(100% - 48px));text-align:center;padding:48px 0}
+.brand{font:28px Georgia,serif}.brand em{color:#947c52}
+h1{font:normal 40px/1.12 Georgia,serif;margin:30px 0 16px}
+p{font-size:16px;line-height:1.55;color:#514958}
+a.cta{display:block;padding:18px 24px;border-radius:100px;background:#23152f;color:white;text-decoration:none;font-weight:650;margin:30px 0 16px}
+small{color:#716779}a{color:inherit}
+@media(prefers-color-scheme:dark){body{background:#140e1d;color:#f6f0e6}p{color:#c5bcca}a.cta{background:#c8b48a;color:#1b1423}small{color:#afa2bd}}
+</style></head><body>
+<main>
+<div class="brand">Market<em>Lens</em></div>
+<h1>Markets move every day.<br>Now you'll know why.</h1>
+<p>Help shape a new way to learn finance through market news. Try the free iPhone beta and tell us what you think.</p>
+<a class="cta" id="join" href="https://testflight.apple.com/join/gkHgKcqU">Open MarketLens in TestFlight</a>
+<small>Requires an iPhone or iPad and Apple's TestFlight app. No payment required.</small>
+<p><small>We count clicks using an anonymous browser identifier, without recording your name or email.</small></p>
+</main>
+<script>
+(function(){
+  const ENDPOINT="https://nhwfzvzllfrnevnflqhb.supabase.co/functions/v1/beta-click";
+  const u=new URL(location.href);
+  const c=u.searchParams.get("campaign")||"website";
+  const campaign=/^[a-z0-9_-]{1,40}$/.test(c)?c:"website";
+  let visitor;
+  try{
+    visitor=localStorage.getItem("ml.beta.visitor");
+    if(!visitor || !/^[0-9a-f-]{36}$/i.test(visitor)){
+      visitor=crypto.randomUUID();localStorage.setItem("ml.beta.visitor",visitor);
+    }
+  }catch{visitor=crypto.randomUUID()}
+  document.getElementById("join").addEventListener("click",async function(e){
+    if(e.metaKey||e.ctrlKey||e.shiftKey||e.altKey||e.button!==0)return;
+    e.preventDefault();
+    const dest=this.href;
+    this.textContent="Opening TestFlight…";
+    const controller=new AbortController();
+    const timeout=setTimeout(()=>controller.abort(),900);
+    try{
+      await fetch(ENDPOINT,{method:"POST",mode:"cors",headers:{"content-type":"application/json"},
+        body:JSON.stringify({campaign,visitor_id:visitor}),signal:controller.signal});
+    }catch{}finally{
+      clearTimeout(timeout);
+      location.assign(dest);
+    }
+  });
+})();
+</script></body></html>
